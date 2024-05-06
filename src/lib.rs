@@ -11,9 +11,9 @@ pub struct BlockValidator {
 #[wasm_bindgen]
 impl BlockValidator {
     #[wasm_bindgen(constructor)]
-    pub fn new(json_block_str: &str) -> Result<BlockValidator, String> {
-        let json_block: JsonBlock =
-            serde_json::from_str(json_block_str).map_err(|err| format!("{err:?}"))?;
+    pub fn new(json_block_js_value: JsValue) -> Result<BlockValidator, String> {
+        let json_block: JsonBlock = serde_wasm_bindgen::from_value(json_block_js_value)
+            .map_err(|err| format!("{err:?}"))?;
         let block = Block::try_from(json_block).map_err(|err| format!("{err:?}"))?;
         let block_header = block.block_header_with_signatures().block_header();
         let era_end = block_header
@@ -27,9 +27,9 @@ impl BlockValidator {
     }
 
     #[wasm_bindgen]
-    pub fn validate_json_block(&self, json_block_str: &str) -> Result<(), String> {
-        let json_block: JsonBlock =
-            serde_json::from_str(json_block_str).map_err(|err| format!("{err:?}"))?;
+    pub fn validate(&self, json_block_js_value: JsValue) -> Result<(), String> {
+        let json_block: JsonBlock = serde_wasm_bindgen::from_value(json_block_js_value)
+            .map_err(|err| format!("{err:?}"))?;
         let block = Block::try_from(json_block).map_err(|err| format!("{err:?}"))?;
         self.era_info
             .validate(block.block_header_with_signatures())
@@ -38,11 +38,14 @@ impl BlockValidator {
 }
 
 #[wasm_bindgen]
-pub fn validate_block_hash(expected_hash_str: &str, json_block_str: &str) -> Result<(), String> {
+pub fn validate_block_hash(
+    expected_hash_str: &str,
+    json_block_js_value: JsValue,
+) -> Result<(), String> {
     let expected_block_hash: BlockHash =
         serde_json::from_str(expected_hash_str).map_err(|err| format!("{err:?}"))?;
     let json_block: JsonBlock =
-        serde_json::from_str(json_block_str).map_err(|err| format!("{err:?}"))?;
+        serde_wasm_bindgen::from_value(json_block_js_value).map_err(|err| format!("{err:?}"))?;
     let block = Block::try_from(json_block).map_err(|err| format!("{err:?}"))?;
     let actual_block_hash = block
         .block_header_with_signatures()
