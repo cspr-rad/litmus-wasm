@@ -1,6 +1,7 @@
 use casper_litmus::{
-    block::Block, block_header::BlockHash, json_compatibility::JsonBlock, kernel::EraInfo,
+    block::Block, json_compatibility::JsonBlock, kernel::EraInfo, merkle_proof::TrieMerkleProof,
 };
+use casper_types::{Key, StoredValue};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -38,25 +39,37 @@ impl BlockValidator {
 }
 
 #[wasm_bindgen]
-pub fn validate_block_hash(
-    expected_hash_str: &str,
-    json_block_js_value: JsValue,
-) -> Result<(), String> {
-    let expected_block_hash: BlockHash =
-        serde_json::from_str(expected_hash_str).map_err(|err| format!("{err:?}"))?;
+pub fn block_hash(json_block_js_value: JsValue) -> Result<String, String> {
     let json_block: JsonBlock =
         serde_wasm_bindgen::from_value(json_block_js_value).map_err(|err| format!("{err:?}"))?;
     let block = Block::try_from(json_block).map_err(|err| format!("{err:?}"))?;
-    let actual_block_hash = block
+    let block_hash = block
         .block_header_with_signatures()
         .block_header()
         .block_hash();
-    if expected_block_hash != actual_block_hash {
-        let expected_block_hash_hex = expected_block_hash.to_hex();
-        let actual_block_hash_hex = actual_block_hash.to_hex();
-        return Err(format!(
-            "Block hashes do no match. Expected block hash: {expected_block_hash_hex} Actual block hash: {actual_block_hash_hex}"
-        ));
-    }
-    Ok(())
+    Ok(block_hash.to_hex())
+}
+
+#[derive(serde::Serialize)]
+struct MerkleProofInfo<'a, 'b> {
+    state_root: String,
+    key: &'a Key,
+    value: &'b StoredValue,
+}
+
+#[wasm_bindgen]
+pub fn process_merkle_proof(merkle_proof_hex_str: &str) -> Result<JsValue, String> {
+    let merkle_proof_bytes =
+        base16::decode(merkle_proof_hex_str).map_err(|err| format!("{err:?}"))?;
+    let merkle_proof: TrieMerkleProof = casper_types::bytesrepr::deserialize(merkle_proof_bytes)
+        .map_err(|err| format!("{err:?}"))?;
+    let state_root = merkle_proof
+        .compute_state_hash()
+        .map_err(|err| format!("{err:?}"))?;
+    let merkle_proof_info = MerkleProofInfo {
+        state_root: state_root.to_hex(),
+        key: merkle_proof.key(),
+        value: merkle_proof.value(),
+    };
+    serde_wasm_bindgen::to_value(&merkle_proof_info).map_err(|err| format!("{err:?}"))
 }
