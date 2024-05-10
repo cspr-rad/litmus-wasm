@@ -1,7 +1,11 @@
+extern crate alloc;
+
+use alloc::collections::BTreeMap;
+
 use casper_litmus::{
     block::Block, json_compatibility::JsonBlock, kernel::EraInfo, merkle_proof::TrieMerkleProof,
 };
-use casper_types::{Key, StoredValue};
+use casper_types::{Key, PublicKey, StoredValue, U512};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -12,18 +16,14 @@ pub struct BlockValidator {
 #[wasm_bindgen]
 impl BlockValidator {
     #[wasm_bindgen(constructor)]
-    pub fn new(json_block_js_value: JsValue) -> Result<BlockValidator, String> {
-        let json_block: JsonBlock = serde_wasm_bindgen::from_value(json_block_js_value)
-            .map_err(|err| format!("{err:?}"))?;
-        let block = Block::try_from(json_block).map_err(|err| format!("{err:?}"))?;
-        let block_header = block.block_header_with_signatures().block_header();
-        let era_end = block_header
-            .era_end()
-            .ok_or("block is not a switch block")?;
-        let era_info = EraInfo::new(
-            block_header.era_id().successor(),
-            era_end.next_era_validator_weights().to_owned(),
-        );
+    pub fn new(
+        era_number: u64,
+        validator_weights_js_value: JsValue,
+    ) -> Result<BlockValidator, String> {
+        let validator_weights: BTreeMap<PublicKey, U512> =
+            serde_wasm_bindgen::from_value(validator_weights_js_value)
+                .map_err(|err| format!("{err:?}"))?;
+        let era_info = EraInfo::new(era_number.into(), validator_weights);
         Ok(BlockValidator { era_info })
     }
 
