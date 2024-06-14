@@ -1,5 +1,7 @@
 extern crate alloc;
 
+mod js_compatibility;
+
 use alloc::collections::BTreeMap;
 
 use casper_litmus::{
@@ -8,6 +10,8 @@ use casper_litmus::{
 use casper_types::{PublicKey, U512};
 use serde_json::json;
 use wasm_bindgen::prelude::*;
+
+use js_compatibility::JSCompatibleStoredValue;
 
 #[wasm_bindgen]
 pub struct BlockValidator {
@@ -66,7 +70,7 @@ pub fn process_query_proofs(
     let output = json!({
         "state_root": query_info.state_root(),
         "key": query_info.key(),
-        "value": query_info.stored_value()
+        "value": JSCompatibleStoredValue::from(query_info.stored_value())
     });
     serde_wasm_bindgen::to_value(&output).map_err(|err| format!("{err:?}"))
 }
