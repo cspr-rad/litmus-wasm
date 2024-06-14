@@ -5,7 +5,8 @@ use alloc::collections::BTreeMap;
 use casper_litmus::{
     block::Block, json_compatibility::JsonBlock, kernel::EraInfo, merkle_proof::TrieMerkleProof,
 };
-use casper_types::{Key, PublicKey, StoredValue, U512};
+use casper_types::{PublicKey, U512};
+use serde_json::json;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -50,26 +51,22 @@ pub fn block_hash(json_block_js_value: JsValue) -> Result<String, String> {
     Ok(block_hash.to_hex())
 }
 
-#[derive(serde::Serialize)]
-struct MerkleProofInfo<'a, 'b> {
-    state_root: String,
-    key: &'a Key,
-    value: &'b StoredValue,
-}
-
 #[wasm_bindgen]
-pub fn process_merkle_proof(merkle_proof_hex_str: &str) -> Result<JsValue, String> {
+pub fn process_query_proofs(
+    merkle_proofs_hex_str: &str,
+    path: Vec<String>,
+) -> Result<JsValue, String> {
     let merkle_proof_bytes =
-        base16::decode(merkle_proof_hex_str).map_err(|err| format!("{err:?}"))?;
-    let merkle_proof: TrieMerkleProof = casper_types::bytesrepr::deserialize(merkle_proof_bytes)
+        base16::decode(merkle_proofs_hex_str).map_err(|err| format!("{err:?}"))?;
+    let merkle_proofs: Vec<TrieMerkleProof> =
+        casper_types::bytesrepr::deserialize(merkle_proof_bytes)
+            .map_err(|err| format!("{err:?}"))?;
+    let query_info = casper_litmus::merkle_proof::process_query_proofs(&merkle_proofs, &path)
         .map_err(|err| format!("{err:?}"))?;
-    let state_root = merkle_proof
-        .compute_state_hash()
-        .map_err(|err| format!("{err:?}"))?;
-    let merkle_proof_info = MerkleProofInfo {
-        state_root: state_root.to_hex(),
-        key: merkle_proof.key(),
-        value: merkle_proof.value(),
-    };
-    serde_wasm_bindgen::to_value(&merkle_proof_info).map_err(|err| format!("{err:?}"))
+    let output = json!({
+        "state_root": query_info.state_root(),
+        "key": query_info.key(),
+        "value": query_info.stored_value()
+    });
+    serde_wasm_bindgen::to_value(&output).map_err(|err| format!("{err:?}"))
 }
