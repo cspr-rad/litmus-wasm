@@ -10,7 +10,9 @@ crate-type = ["cdylib"]
 
 [dependencies]
 base16 = { version = "0.2.1", default-features = false, features = ["alloc"] }
-casper-litmus = { path = "../litmus" }
+# FIXME after merge
+casper-litmus = { git = "https://github.com/cspr-rad/litmus", branch = "support-casper-2-rc4" }
+casper-types = "4.0.1"
 serde = { version = "1.0.195", default-features = false, features = ["derive"] }
 serde-wasm-bindgen = "0.6.5"
 serde_json = { version = "1.0.116", default-features = false }
