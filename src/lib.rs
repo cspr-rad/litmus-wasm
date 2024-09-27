@@ -5,9 +5,10 @@ mod js_compatibility;
 use alloc::collections::BTreeMap;
 
 use casper_litmus::{
-    block::Block, json_compatibility::JsonBlock, kernel::EraInfo, merkle_proof::TrieMerkleProof,
+    casper_types::{self, JsonBlockWithSignatures, PublicKey, U512},
+    kernel::EraInfo,
+    merkle_proof::TrieMerkleProof,
 };
-use casper_types::{PublicKey, U512};
 use serde_json::json;
 use wasm_bindgen::prelude::*;
 
@@ -34,25 +35,21 @@ impl BlockValidator {
 
     #[wasm_bindgen]
     pub fn validate(&self, json_block_js_value: JsValue) -> Result<(), String> {
-        let json_block: JsonBlock = serde_wasm_bindgen::from_value(json_block_js_value)
-            .map_err(|err| format!("{err:?}"))?;
-        let block = Block::try_from(json_block).map_err(|err| format!("{err:?}"))?;
+        let json_block: JsonBlockWithSignatures =
+            serde_wasm_bindgen::from_value(json_block_js_value)
+                .map_err(|err| format!("{err:?}"))?;
         self.era_info
-            .validate(block.block_header_with_signatures())
+            .validate(json_block)
             .map_err(|err| format!("{err:?}"))
     }
 }
 
 #[wasm_bindgen]
 pub fn block_hash(json_block_js_value: JsValue) -> Result<String, String> {
-    let json_block: JsonBlock =
+    let json_block: JsonBlockWithSignatures =
         serde_wasm_bindgen::from_value(json_block_js_value).map_err(|err| format!("{err:?}"))?;
-    let block = Block::try_from(json_block).map_err(|err| format!("{err:?}"))?;
-    let block_hash = block
-        .block_header_with_signatures()
-        .block_header()
-        .block_hash();
-    Ok(block_hash.to_hex())
+    let block_hash = json_block.block.hash();
+    Ok(base16::encode_lower(&block_hash))
 }
 
 #[wasm_bindgen]
