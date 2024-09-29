@@ -1,0 +1,16 @@
+{
+  "name": "casper-litmus-wasm",
+  "description": "The Casper Blockchain's light-client WASM library.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "files": [
+    "casper_litmus_wasm_bg.wasm",
+    "casper_litmus_wasm.js",
+    "casper_litmus_wasm.d.ts"
+  ],
+  "module": "casper_litmus_wasm.js",
+  "types": "casper_litmus_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
